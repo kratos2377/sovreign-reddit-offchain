@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = [ "crates/aether", "crates/comet","crates/cosmic", "crates/nexus" , "crates/migration", "crates/common-tracing"]
+members = [ "crates/aether", "crates/comet","crates/cosmic", "crates/nexus" , "crates/migration", "crates/common-tracing", "crates/pulsar"]

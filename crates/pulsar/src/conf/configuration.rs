@@ -3,15 +3,16 @@ use std::{env, sync::atomic::AtomicU16};
 use config::{Config, ConfigError, File};
 use serde::Deserialize;
 use std::sync::atomic::Ordering::SeqCst;
-use crate::conf::config_types::RabbitMQConfiguration;
+use crate::conf::config_types::{KafkaConfiguration, RabbitMQConfiguration};
 
 use super::config_types::{ LoggingConfiguration, ServerConfiguration};
 
 
 pub static SERVER_PORT: AtomicU16 = AtomicU16::new(0);
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize , Clone)]
 #[allow(unused)]
 pub struct Configuration {
+    pub kafka: KafkaConfiguration,
     pub rabbit_mq: RabbitMQConfiguration,
     pub server: ServerConfiguration,
     pub logging: LoggingConfiguration,
