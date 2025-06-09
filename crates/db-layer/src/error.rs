@@ -19,11 +19,17 @@ pub struct SuccessResponse {
 #[derive(Clone, Debug, Serialize, strum_macros::AsRefStr)]
 #[serde(tag = "type", content = "data")]
 pub enum Error {
+SomeErrorOccurred,
 	MissingParams,
+	UnexpectedError,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
 
+	RedisUpdateFailed,
+	
+	DBInsertError,
+	DBFetchError,
 	TicketDeleteFailIdNotFound { id: u64 },
 }
 
@@ -64,8 +70,15 @@ impl Error {
 	pub fn client_status_and_error(&self) -> (StatusCode, ClientError) {
 		#[allow(unreachable_patterns)]
 		match self {
+			Self::DBFetchError => (StatusCode::BAD_REQUEST , ClientError::DB_FETCH_ERROR), 
+			Self::RedisUpdateFailed => (StatusCode::BAD_REQUEST , ClientError::REDIS_UPDATE_FAILED),
+			Self::SomeErrorOccurred => (StatusCode::BAD_REQUEST , ClientError::SOME_ERROR_OCCURRED),
 			
 			Self::MissingParams => (StatusCode::BAD_REQUEST , ClientError::MISSING_PARAMS),
+
+			Self::UnexpectedError => (StatusCode::BAD_REQUEST , ClientError::UNEXPECTED_ERROR),
+
+			Self::DBInsertError => (StatusCode::BAD_REQUEST , ClientError::DB_INSERT_ERROR),
 
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
@@ -92,8 +105,13 @@ impl Error {
 #[allow(non_camel_case_types)]
 pub enum ClientError {
 	MISSING_PARAMS,
+	SOME_ERROR_OCCURRED,
+	REDIS_UPDATE_FAILED,
+	UNEXPECTED_ERROR,
+	DB_INSERT_ERROR,
 	NO_AUTH,
 	INVALID_PARAMS,
 	SERVICE_ERROR,
-	INVALID_EMAIL_USER_KEY
+	INVALID_EMAIL_USER_KEY,
+	DB_FETCH_ERROR
 }

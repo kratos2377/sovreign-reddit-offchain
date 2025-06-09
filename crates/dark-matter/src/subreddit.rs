@@ -13,6 +13,8 @@ use crate::{posts, sub_mods, subreddit, user_joined_subs, users};
         pub sub_sov_id: String,
         pub subname: String,
         pub sub_description: String,
+            pub created_at: DateTime,
+    pub updated_at: DateTime,
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

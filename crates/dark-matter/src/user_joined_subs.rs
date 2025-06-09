@@ -11,8 +11,10 @@ use crate::{subreddit, users};
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    pub user_sov_id: Option<String>,
-    pub sub_sov_id: Option<String>,
+    pub user_sov_id: String,
+    pub sub_sov_id: String,
+        pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -48,3 +50,11 @@ impl Related<subreddit::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+
+impl Entity {
+        pub fn find_by_sub_and_user_sov_id(sub_sov_id: &str , user_sov_id: &str) -> Select<Entity> {
+        Self::find().filter(Column::SubSovId.eq(sub_sov_id))
+            .filter(Column::UserSovId.eq(user_sov_id))
+    }
+}

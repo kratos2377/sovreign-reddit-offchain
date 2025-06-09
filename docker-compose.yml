@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # RabbitMQ for AMQP messaging
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    # AMQP port
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - app-network
+
+  # Redis instance for API responses
+  redis-api:
+    image: redis:7-alpine
+    container_name: redis-api
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_api_data:/data
+    networks:
+      - app-network
+
+  # Redis instance for WebSocket transaction HAs
+  redis-ws:
+    image: redis:7-alpine
+    container_name: redis-ws
+    ports:
+      - "6380:6380"
+    command: ["redis-server", "--bind", "matchaker-cache", "--port", "6380", "--requirepass" , "eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81"]
+    volumes:
+      - redis_ws_data:/data
+    networks:
+      - app-network
+
+  # PostgreSQL database
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app-network
+
+  # Zookeeper for Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - app-network
+
+  # Kafka broker
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "9094:9094"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - app-network
+
+  # Kafka topic initialization
+  kafka-topics:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka-topics
+    depends_on:
+      - kafka
+    command: >
+      bash -c "
+        # Wait for Kafka to be ready
+        echo 'Waiting for Kafka to be ready...'
+        cub kafka-ready -b kafka:29092 1 30
+        
+        # Create topics
+        kafka-topics --create --topic user --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+        kafka-topics --create --topic post --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+        kafka-topics --create --topic subreddit --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+        
+        echo 'Topics created successfully!'
+        kafka-topics --list --bootstrap-server kafka:29092
+      "
+    networks:
+      - app-network
+
+volumes:
+  rabbitmq_data:
+  redis_api_data:
+  redis_ws_data:
+  postgres_data:
+  zookeeper_data:
+  zookeeper_logs:
+  kafka_data:
+
+networks:
+  app-network:
+    driver: bridge

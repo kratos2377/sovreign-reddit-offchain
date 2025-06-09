@@ -1,4 +1,4 @@
- use sea_orm::entity::prelude::*;
+ use sea_orm::{entity::prelude::*, QueryOrder};
 use serde::{Deserialize, Serialize};
 
 use crate::{comments, subreddit, users};
@@ -17,6 +17,8 @@ use crate::{comments, subreddit, users};
         pub upvote: i32,
         pub downvote: i32,
         pub score: i32,
+            pub created_at: DateTime,
+    pub updated_at: DateTime,
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -69,5 +71,14 @@ impl Entity {
     /// Find a post with its author and subreddit
     pub async fn find_with_author_and_sub( post_sov_id: &str) -> Select<Entity> {
         Self::find_by_id(post_sov_id)
+    }
+
+
+    pub async fn find_by_user_id(user_id: &str) -> Select<Entity> {
+        Self::find().filter(Column::UserSovId.eq(user_id))
+    }
+
+     pub async fn find_by_sub_id(sub_id: &str) -> Select<Entity> {
+        Self::find().filter(Column::SubSovId.eq(sub_id)).order_by_asc(Column::CreatedAt)
     }
 }

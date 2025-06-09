@@ -10,6 +10,8 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub sov_id: String,
     pub username: String,
+        pub created_at: DateTime,
+    pub updated_at: DateTime,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -72,4 +74,7 @@ impl Entity {
         Self::find_by_id(sov_id)
             .find_with_related(comments::Entity)
     }
+
+
+   
 }

@@ -14,6 +14,8 @@ use crate::{posts, users};
         pub upvote: i32,
         pub downvote: i32,
         pub score: i32,
+    pub created_at: DateTime,
+    pub updated_at: DateTime,
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -49,3 +51,19 @@ use crate::{posts, users};
     }
 
     impl ActiveModelBehavior for ActiveModel {}
+
+
+    impl Entity {
+
+        
+    pub async fn find_by_user_id(user_id: &str) -> Select<Entity> {
+        Self::find().filter(Column::UserSovId.eq(user_id))
+    }
+
+
+     pub async fn find_by_post_id(post_id: &str) -> Select<Entity> {
+        Self::find().filter(Column::PostSovId.eq(post_id))
+    }
+
+
+    }
