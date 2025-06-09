@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 use sea_orm::SelectTwoMany;
 use serde::{Deserialize, Serialize};
 
-use crate::{posts, subreddit};
+use crate::{posts, sub_mods, subreddit, user_joined_subs, users};
     
     #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
     #[sea_orm(table_name = "subreddit")]
@@ -13,37 +13,44 @@ use crate::{posts, subreddit};
         pub sub_sov_id: String,
         pub subname: String,
         pub sub_description: String,
-        pub mods: Vec<String>,
     }
 
     #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
     pub enum Relation {
-        #[sea_orm(has_many = "super::user_joined_subs::Entity")]
+        #[sea_orm(has_many = "user_joined_subs::Entity")]
         UserJoinedSubs,
-        #[sea_orm(has_many = "super::posts::Entity")]
+        #[sea_orm(has_many = "posts::Entity")]
         Posts,
+         #[sea_orm(has_many = "sub_mods::Entity")]
+         SubMods,
     }
 
-    impl Related<super::user_joined_subs::Entity> for Entity {
+    impl Related<user_joined_subs::Entity> for Entity {
         fn to() -> RelationDef {
             Relation::UserJoinedSubs.def()
         }
     }
 
-    impl Related<super::posts::Entity> for Entity {
+    impl Related<posts::Entity> for Entity {
         fn to() -> RelationDef {
             Relation::Posts.def()
         }
     }
 
+    impl Related<sub_mods::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::SubMods.def()
+    }
+}
+
     // Many-to-Many relation between Sub and Users through UserJoinedSubs
-    impl Related<super::users::Entity> for Entity {
+    impl Related<users::Entity> for Entity {
         fn to() -> RelationDef {
-            super::user_joined_subs::Relation::Users.def()
+            user_joined_subs::Relation::Users.def()
         }
         
         fn via() -> Option<RelationDef> {
-            Some(super::user_joined_subs::Relation::Sub.def().rev())
+            Some(user_joined_subs::Relation::Sub.def().rev())
         }
     }
 

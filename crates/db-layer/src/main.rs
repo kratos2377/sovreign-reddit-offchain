@@ -15,7 +15,6 @@ pub mod state;
 pub mod error;
 pub mod conf;
 pub mod logging_tracing;
-pub mod payload;
 
 
 #[tokio::main]

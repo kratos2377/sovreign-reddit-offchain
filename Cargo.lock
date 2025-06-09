@@ -31,10 +31,56 @@ dependencies = [
 [[package]]
 name = "aether-post"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.8.4",
+ "axum-macros",
+ "chrono",
+ "common-tracing",
+ "config",
+ "cosmic",
+ "dark-matter",
+ "futures-util",
+ "nano-id",
+ "rdkafka",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "strum_macros",
+ "tokio",
+ "tower 0.5.2",
+ "tower-cookies",
+ "tower-http 0.6.4",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "aether-subreddit"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum 0.8.4",
+ "axum-macros",
+ "chrono",
+ "common-tracing",
+ "config",
+ "cosmic",
+ "dark-matter",
+ "futures-util",
+ "nano-id",
+ "rdkafka",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "strum_macros",
+ "tokio",
+ "tower 0.5.2",
+ "tower-cookies",
+ "tower-http 0.6.4",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "aether-user"
@@ -1117,6 +1163,7 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 name = "cosmic"
 version = "0.1.0"
 dependencies = [
+ "reqwest",
  "serde",
  "serde_json",
 ]

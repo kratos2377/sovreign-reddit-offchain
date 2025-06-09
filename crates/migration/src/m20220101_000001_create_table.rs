@@ -27,17 +27,16 @@ impl MigrationTrait for Migration {
         manager
             .create_table(
                 Table::create()
-                    .table(Sub::Table)
+                    .table(Subreddit::Table)
                     .if_not_exists()
                     .col(
-                        ColumnDef::new(Sub::Sub_Sov_Id)
+                        ColumnDef::new(Subreddit::Sub_Sov_Id)
                             .string()
                             .not_null()
                             .primary_key(),
                     )
-                    .col(ColumnDef::new(Sub::Subname).string())
-                    .col(ColumnDef::new(Sub::Sub_Description).string())
-                    .col(ColumnDef::new(Sub::Mods).array(ColumnType::String(None)))
+                    .col(ColumnDef::new(Subreddit::Subname).string())
+                    .col(ColumnDef::new(Subreddit::Sub_Description).string())
                     .to_owned(),
             )
             .await?;
@@ -74,7 +73,7 @@ impl MigrationTrait for Migration {
                         ForeignKey::create()
                             .name("fk_posts_sub_sov_id")
                             .from(Posts::Table, Posts::Sub_Sov_Id)
-                            .to(Sub::Table, Sub::Sub_Sov_Id)
+                            .to(Subreddit::Table, Subreddit::Sub_Sov_Id)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
@@ -108,7 +107,7 @@ impl MigrationTrait for Migration {
                         ForeignKey::create()
                             .name("fk_user_joined_subs_sub_sov_id")
                             .from(UserJoinedSubs::Table, UserJoinedSubs::Sub_Sov_Id)
-                            .to(Sub::Table, Sub::Sub_Sov_Id)
+                            .to(Subreddit::Table, Subreddit::Sub_Sov_Id)
                             .on_delete(ForeignKeyAction::Cascade)
                             .on_update(ForeignKeyAction::Cascade),
                     )
@@ -153,6 +152,42 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
+
+
+               // Create sub_mods table
+        manager
+            .create_table(
+                Table::create()
+                    .table(SubMods::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(SubMods::Sub_Sov_Id)
+                            .string()
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(ColumnDef::new(SubMods::User_Sov_Id).string())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_sub_mods_user_sov_id")
+                            .from(SubMods::Table, SubMods::User_Sov_Id)
+                            .to(Users::Table, Users::Sov_Id)
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk_sub_mods_sub_sov_id")
+                            .from(SubMods::Table, SubMods::Sub_Sov_Id)
+                            .to(Subreddit::Table, Subreddit::Sub_Sov_Id)
+                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_update(ForeignKeyAction::Cascade),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+
 
         // Create indexes for all *sov_id columns for fast searching
         
@@ -222,11 +257,27 @@ impl MigrationTrait for Migration {
             )
             .await?;
 
+
+         manager
+            .create_index(
+                Index::create()
+                    .name("idx_sub_mods_user_sov_id")
+                    .table(SubMods::Table)
+                    .col(SubMods::User_Sov_Id)
+                    .to_owned(),
+            )
+            .await?;
+
         Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         // Drop tables in reverse order to handle foreign key constraints
+
+           manager
+            .drop_table(Table::drop().table(SubMods::Table).to_owned())
+            .await?;
+
         manager
             .drop_table(Table::drop().table(Comments::Table).to_owned())
             .await?;
@@ -240,7 +291,7 @@ impl MigrationTrait for Migration {
             .await?;
 
         manager
-            .drop_table(Table::drop().table(Sub::Table).to_owned())
+            .drop_table(Table::drop().table(Subreddit::Table).to_owned())
             .await?;
 
         manager
@@ -259,12 +310,11 @@ enum Users {
 }
 
 #[derive(DeriveIden)]
-enum Sub {
+enum Subreddit {
     Table,
     Sub_Sov_Id,
     Subname,
-    Sub_Description,
-    Mods,
+    Sub_Description
 }
 
 #[derive(DeriveIden)]
@@ -299,4 +349,11 @@ enum Comments {
     Upvote,
     Downvote,
     Score,
+}
+
+#[derive(Iden)]
+enum SubMods {
+    Table,
+    Sub_Sov_Id,
+    User_Sov_Id,
 }
