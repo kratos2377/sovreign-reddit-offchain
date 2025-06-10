@@ -3,10 +3,11 @@ use std::collections::HashMap;
 use axum::extract::{Path, Query};
 use axum::{extract::State, Json};
 use chrono::Utc;
-use cosmic::payload::{AddCommentPayload, CreateAndSaveModel, GetCommentsForPosts, GetPostsForSubreddit, GetUserPostsOrCommentsPayload, JoinOrUnjoinSub, LikeOrDislikeComment, LikeOrDislikePost};
-use dark_matter::{comments, posts, sub_mods, subreddit, user_joined_subs, users};
+use cosmic::payload::{AddCommentPayload, CreateAndSaveModel, GetCommentsForPosts, GetPostsForSubreddit, GetUserPostsOrCommentsPayload, JoinOrUnjoinSub, LikeOrDislikeComment, LikeOrDislikePost, UserFeedPayload};
+use dark_matter::{comments, posts, sub_mods, subreddit, user_joined_subs, user_liked_posts, users};
+use migration::Expr;
 use sea_orm::prelude::Uuid;
-use sea_orm::{ActiveModelTrait, ConnectionTrait, DbBackend, Statement};
+use sea_orm::{ActiveModelTrait, ConnectionTrait, DbBackend, QueryFilter, Statement};
 use migration::extension::postgres;
 use redis::{AsyncCommands, RedisResult};
 use sea_orm::{EntityTrait, Set};
@@ -16,7 +17,7 @@ use crate::sql_statements::get_sql_statement_for_post_upvote;
 use crate::{state::DBState};
 use crate::error::{Error , Result as APIResult};
 use serde_json::Value;
-
+use sea_orm::ColumnTrait;
 pub async fn create_and_save_model(
         state: State<DBState>,
         Path(schema): Path<String>,
@@ -172,8 +173,9 @@ pub async fn join_and_unjoin_sub(
                     .one(&state.connection).await;
 
         if sub_mod_rsp.is_err() {
-            Err("Some DB Error Occured");
-        }
+            Err("Some DB Error Occured")
+        } else {
+            
  
 
         let sub_mod_model = sub_mod_rsp.unwrap().unwrap();
@@ -181,6 +183,7 @@ pub async fn join_and_unjoin_sub(
          let _  = sub_mod_model.delete(&state.connection).await;
 
           Ok("Unjoined Sub")
+        }
         
 
     },
@@ -199,10 +202,12 @@ pub async fn join_and_unjoin_sub(
        let rsp =  sub_mod_active_model.insert(&state.connection).await;
 
        if rsp.is_err() {
-              Err("Some DB Error Occured");
+              Err("Some DB Error Occured")
+       } else {
+        
+        Ok("Joined The Sub")
        }
 
-        Ok("Joined The Sub")
 
     },
 
@@ -278,7 +283,7 @@ pub async fn like_or_dislike_post(
 ) -> APIResult<Json<Value>> {
 
 
-    if payload.post_sov_id == "" {
+    if payload.post_sov_id == "" || payload.user_sov_id == "" {
         return Err(Error::MissingParams)
     }
 
@@ -385,28 +390,60 @@ pub async fn like_or_dislike_post(
     }
 
     let postgres_conn = state.connection.clone();
+ 
+ 
+    if payload.value == 0 {
+
+        let user_liked_model = user_liked_posts::Entity::find_by_post_and_user_sov_id(&payload.post_sov_id, &payload.user_sov_id).one(&state.connection).await;
+        
+        
+        let user_liked_rsp = user_liked_model.unwrap().unwrap();
+
+         let _  = user_liked_rsp.delete(&state.connection).await;
+   
+    } else {
+
+       if payload.prev_value == 0 {
+
+        let liked_active_model = user_liked_posts::ActiveModel {
+            id: Set(Uuid::new_v4()),
+            user_sov_id: Set(payload.user_sov_id.clone()),
+            post_sov_id: Set(payload.post_sov_id.clone()),
+            value: Set(payload.value),
+        created_at: Set(Utc::now().naive_utc()),
+        updated_at: Set(Utc::now().naive_utc()),
+        };
+
+        let _ = liked_active_model.insert(&state.connection).await;
+
+
+       } else {
+
+           let _ =  user_liked_posts::Entity::update_many().col_expr(user_liked_posts::Column::Value, Expr::val(payload.value.clone()).into())
+                .filter(user_liked_posts::Column::UserSovId.eq(payload.user_sov_id.clone()))
+                .filter(user_liked_posts::Column::PostSovId.eq(payload.post_sov_id.clone()))
+                .exec(&state.connection).await;
+       }
+
+    }
+ 
+ 
     let post_sov_id_clone = payload.post_sov_id.clone();
     let sql_statements_for_post = get_sql_statement_for_post_upvote(payload.value.clone(), payload.prev_value.clone());
     
  let now = Utc::now();
+
     tokio::spawn(async move {
 
-        postgres_conn.execute( Statement::from_sql_and_values(DbBackend::Postgres, 
+       let _ =  postgres_conn.execute( Statement::from_sql_and_values(DbBackend::Postgres, 
             
        sql_statements_for_post
             , [post_sov_id_clone.into() , now.to_string().into()])
-    );
-  
-
+    ).await;
 
     });
 
 
-    
-
-
-
-
         let body = Json(json!({
          "result": {
              "success": true
@@ -418,135 +455,6 @@ pub async fn like_or_dislike_post(
 
 }
  
-
-
-
-pub async fn like_or_dislike_comment(
-    state: State<DBState>,
-    payload: Json<LikeOrDislikeComment>
-) -> APIResult<Json<Value>> {
-
-
-    if payload.comment_sov_id == "" {
-        return Err(Error::MissingParams)
-    }
-
-    let redis_key = get_redis_key_from_keys("comment", "upvote_metadata", &payload.comment_sov_id);
- 
-   let redis_script =  if payload.prev_value == -1 {
-
-        if payload.value == 1 {
-
-                 redis::Script::new(
-            r#"
-            local key = KEYS[1]
-
-            redis.call('HINCRBY', key, 'downvote', -1)
-            redis.call('HINCRBY', key, 'score', 2)
-            redis.call('HINCRBY', key, 'upvote', 1)  
-            return "OK"
-            "#
-        )
-
-        } else {
-
-                 redis::Script::new(
-            r#"
-            local key = KEYS[1]
-
-            redis.call('HINCRBY', key, 'downvote', -1)
-            redis.call('HINCRBY', key, 'score', 1)
-            redis.call('HINCRBY', key, 'upvote', 0)  
-            return "OK"
-            "#
-        )
-
-        }
-
-
-    } else if payload.prev_value == 1 {
-
-
-        if payload.value == -1 {
-            
-                redis::Script::new(
-            r#"
-            local key = KEYS[1]
-
-            redis.call('HINCRBY', key, 'upvote', -1)
-            redis.call('HINCRBY', key, 'score', -2)
-            redis.call('HINCRBY', key, 'downvote', 1)
-            return "OK"
-            "#
-        )
-        } else {
-
-                redis::Script::new(
-            r#"
-            local key = KEYS[1]
-
-            redis.call('HINCRBY', key, 'upvote', -1)
-            redis.call('HINCRBY', key, 'score', -1)
-            redis.call('HINCRBY', key, 'downvote', 0)
-            return "OK"
-            "#
-        )
-
-        }
-
-    } else {
-
-        if payload.value == 1 {
-
-        redis::Script::new(
-            r#"
-            local key = KEYS[1]
-
-            redis.call('HINCRBY', key, 'downvote', 0)
-            redis.call('HINCRBY', key, 'score', 1)
-            redis.call('HINCRBY', key, 'upvote', 1)  
-            return "OK"
-            "#
-        )
-
-        } else {
-
-                    redis::Script::new(
-            r#"
-            local key = KEYS[1]
-
-            redis.call('HINCRBY', key, 'downvote', 1)
-            redis.call('HINCRBY', key, 'score', -1)
-            redis.call('HINCRBY', key, 'upvote', 0)  
-            return "OK"
-            "#
-        )
-
-        }
-             
-    };
-
-    let upvote_redis_rsp: RedisResult<()> = redis_script.key(redis_key).invoke_async(&mut state.redis_connection.clone()).await;
-
-
-    if upvote_redis_rsp.is_err() {
-        return Err(Error::RedisUpdateFailed)
-    }
-
-
-
-        let body = Json(json!({
-         "result": {
-             "success": true
-         },
-     }));
- 
-     Ok(body)
-
-
-}
- 
-
 
 pub async fn get_user_posts(
     state: State<DBState>,
@@ -668,6 +576,64 @@ pub async fn get_comments_for_posts(
  
      Ok(body)
 
+
+}
+
+
+
+pub async fn get_user_feed(
+    state: State<DBState>,
+    payload: Json<UserFeedPayload>
+) -> APIResult<Json<Value>> {
+
+    if payload.user_sov_id == "" {
+        return Err(Error::MissingParams)
+    }
+
+
+    let result = posts::Entity::find().from_raw_sql(
+        Statement::from_sql_and_values(DbBackend::Postgres, 
+            r#"SELECT 
+    p.post_sov_id,
+    p.title,
+    p.content,
+    p.flair,
+    p.upvote,
+    p.downvote,
+    p.score,
+    s.subname,
+    s.subdescription,
+    u.username AS post_author,
+    p.user_sov_id AS author_sov_id
+FROM posts p
+INNER JOIN subreddit s ON p.sub_sov_id = s.sub_sov_id
+INNER JOIN users u ON p.user_sov_id = u.sov_id
+INNER JOIN user_joined_subs ujs ON s.sub_sov_id = ujs.sub_sov_id
+WHERE ujs.user_sov_id = $1
+ORDER BY p.created_time DESC"#, [payload.user_sov_id.clone().into()])
+    ).all(&state.connection).await;
+
+
+
+      if result.is_err() {
+        println!("The error while getting online friends is: {:?}", result.as_ref().err());
+        println!("Error Is: {:?}", result.unwrap_err());
+        return Err(Error::ErrorWhileFetchingUserFeed)
+    }
+
+    
+          
+   
+
+    let body = Json(json!({
+		"result": {
+			"success": true,
+		},
+        "feed_posts": result.unwrap()
+	}));
+
+
+     Ok(body)
 
 }
 

@@ -25,7 +25,7 @@ SomeErrorOccurred,
 	AuthFailNoAuthTokenCookie,
 	AuthFailTokenWrongFormat,
 	AuthFailCtxNotInRequestExt,
-
+	ErrorWhileFetchingUserFeed,
 	RedisUpdateFailed,
 	
 	DBInsertError,
@@ -79,7 +79,7 @@ impl Error {
 			Self::UnexpectedError => (StatusCode::BAD_REQUEST , ClientError::UNEXPECTED_ERROR),
 
 			Self::DBInsertError => (StatusCode::BAD_REQUEST , ClientError::DB_INSERT_ERROR),
-
+			Self::ErrorWhileFetchingUserFeed => (StatusCode::BAD_REQUEST , ClientError::ERROR_WHILE_FETCHING_USER_FEED),
 			// -- Auth.
 			Self::AuthFailNoAuthTokenCookie
 			| Self::AuthFailTokenWrongFormat
@@ -108,6 +108,7 @@ pub enum ClientError {
 	SOME_ERROR_OCCURRED,
 	REDIS_UPDATE_FAILED,
 	UNEXPECTED_ERROR,
+	ERROR_WHILE_FETCHING_USER_FEED,
 	DB_INSERT_ERROR,
 	NO_AUTH,
 	INVALID_PARAMS,

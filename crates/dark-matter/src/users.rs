@@ -1,7 +1,7 @@
 use sea_orm::{entity::prelude::*, SelectTwo, SelectTwoMany};
 use serde::{Deserialize, Serialize};
 
-use crate::{comments, posts, subreddit};
+use crate::{comments, posts, subreddit , user_liked_posts};
 
 // Users Entity
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
@@ -22,6 +22,9 @@ pub enum Relation {
     Posts,
     #[sea_orm(has_many = "super::comments::Entity")]
     Comments,
+
+    #[sea_orm(has_many = "user_liked_posts::Entity")]
+    UserLikedPosts,
 }
 
 impl Related<super::user_joined_subs::Entity> for Entity {
@@ -30,9 +33,20 @@ impl Related<super::user_joined_subs::Entity> for Entity {
     }
 }
 
-impl Related<super::posts::Entity> for Entity {
+// impl Related<super::posts::Entity> for Entity {
+//     fn to() -> RelationDef {
+//         Relation::Posts.def()
+//     }
+// }
+
+
+impl Related<posts::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::Posts.def()
+        user_liked_posts::Relation::Post.def()
+    }
+    
+    fn via() -> Option<RelationDef> {
+        Some(user_liked_posts::Relation::Users.def().rev())
     }
 }
 
@@ -40,6 +54,14 @@ impl Related<super::comments::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Comments.def()
     }
+
+}
+
+  impl Related<user_liked_posts::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserLikedPosts.def()
+    }
+
 }
 
 // Many-to-Many relation between Users and Sub through UserJoinedSubs
@@ -52,6 +74,9 @@ impl Related<super::subreddit::Entity> for Entity {
         Some(super::user_joined_subs::Relation::Users.def().rev())
     }
 }
+
+
+
 
 impl ActiveModelBehavior for ActiveModel {}
 

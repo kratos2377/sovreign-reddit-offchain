@@ -97,5 +97,8 @@ pub struct GetCommentsForPosts {
     pub post_sov_id: String,
 }
 
-
+#[derive(Clone , Deserialize , Serialize)]
+pub struct UserFeedPayload {
+    pub user_sov_id: String
+}
 

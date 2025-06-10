@@ -1,7 +1,7 @@
  use sea_orm::{entity::prelude::*, QueryOrder};
 use serde::{Deserialize, Serialize};
 
-use crate::{comments, subreddit, users};
+use crate::{comments, user_liked_posts, subreddit, users};
  
  
  #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
@@ -41,12 +41,26 @@ use crate::{comments, subreddit, users};
         Sub,
         #[sea_orm(has_many = "comments::Entity")]
         Comments,
+
+        #[sea_orm(has_many = "user_liked_posts::Entity")]
+        UserLikedPosts,
     }
 
-    impl Related<users::Entity> for Entity {
-        fn to() -> RelationDef {
-            Relation::Users.def()
-        }
+    // impl Related<users::Entity> for Entity {
+    //     fn to() -> RelationDef {
+    //         Relation::Users.def()
+    //     }
+    // }
+
+
+        impl Related<users::Entity> for Entity {
+                fn to() -> RelationDef {
+                    user_liked_posts::Relation::Users.def()
+                }
+                
+                fn via() -> Option<RelationDef> {
+                    Some(user_liked_posts::Relation::Post.def().rev())
+                }
     }
 
     impl Related<subreddit::Entity> for Entity {
@@ -60,6 +74,16 @@ use crate::{comments, subreddit, users};
             Relation::Comments.def()
         }
     }
+
+        impl Related<user_liked_posts::Entity> for Entity {
+        fn to() -> RelationDef {
+            Relation::UserLikedPosts.def()
+        }
+    }
+
+
+
+
 
     impl ActiveModelBehavior for ActiveModel {}
 
