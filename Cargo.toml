@@ -1,3 +1,4 @@
 [workspace]
 resolver = "2"
-members = [ "crates/aether-user", "crates/comet","crates/cosmic" , "crates/migration", "crates/common-tracing", "crates/pulsar", "crates/aether-post", "crates/aether-subreddit", "crates/dark-matter", "crates/db-layer"]
+members = [ "crates/aether-user", "crates/comet","crates/cosmic" , "crates/migration", 
+         "crates/pulsar", "crates/aether-post", "crates/aether-subreddit", "crates/dark-matter", "crates/db-layer"]
