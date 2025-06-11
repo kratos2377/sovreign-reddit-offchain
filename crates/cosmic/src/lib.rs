@@ -1,6 +1,9 @@
-use serde::{Deserialize , Serialize};
+use std::collections::HashMap;
 
+use serde::{Deserialize , Serialize};
+use serde_json::Value;
 pub mod payload;
+pub mod utils;
 
 // Constants
 
@@ -12,22 +15,23 @@ pub const SOVEREIGN_REDDIT_ROLLUP_EVENTS: &str = "sovereign_reddit_rollup_events
 
 // AMPQ Keys
 
-pub const USER_TX_KEY: &str = "Exchange/UserCreated";
-pub const SUBREDDIT_TX_KEY: &str = "Exchange/SubredditCreated";
-pub const POST_TX_KEY: &str = "Exchange/PostCreated";
+pub const USER_TX_KEY: &str = "Reddit/UserCreatedEvent";
+pub const SUBREDDIT_TX_KEY: &str = "Reddit/SubRedditCreatedEvent";
+pub const POST_TX_KEY: &str = "Reddit/PostCreatedEvent";
 
 
 // TXs Payload
 
-#[derive(Serialize , Deserialize , Clone)]
+#[derive(Serialize , Deserialize , Clone , Debug)]
 pub struct UserTXPayload {
     pub tx_hash: String,
     #[serde(rename = "type")]
     pub event_type: String,
     pub number: u64,
     pub key: String,
-    pub value: String,
-    pub module: String,
+    #[serde(flatten)]
+    pub additional_properties: HashMap<String, Value>,
+
 }
 
 
@@ -67,9 +71,9 @@ pub struct KafkaPublishPayload {
 
 }
 
-pub const KAFKA_USER_PUBLISH_TOPIC: &str = "user_created";
-pub const KAFKA_SUBREDDIT_PUBLISH_TOPIC: &str = "subreddit_created";
-pub const KAFKA_POST_PUBLISH_TOPIC: &str = "post_created";
+pub const KAFKA_USER_PUBLISH_TOPIC: &str = "user";
+pub const KAFKA_SUBREDDIT_PUBLISH_TOPIC: &str = "subreddit";
+pub const KAFKA_POST_PUBLISH_TOPIC: &str = "post";
 
 
 
@@ -81,13 +85,14 @@ pub const KAFKA_POST_PUBLISH_KEY: &str = "post_created_key";
 
 // WS TX Structs
 
-#[derive(Serialize , Deserialize)]
+#[derive(Serialize , Deserialize , Clone , Debug)]
 pub struct TransactionWSEvent {
     pub tx_hash: String,
     #[serde(rename = "type")]
     pub event_type: String,
     pub number: u64,
     pub key: String,
-    pub value: String,
-    pub module: String,
+    #[serde(flatten)]
+    pub additional_properties: HashMap<String, Value>,
 }
+

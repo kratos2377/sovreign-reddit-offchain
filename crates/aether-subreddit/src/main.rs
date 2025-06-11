@@ -14,7 +14,6 @@ use crate::{conf::{config_types::ServerConfiguration, configuration::Configurati
 pub mod kafka;
 pub mod conf;
 pub mod error;
-pub mod logging_tracing;
 pub mod context;
 
 
@@ -25,7 +24,7 @@ async fn main() {
 
       let config = conf::configuration::Configuration::load().unwrap();
 
-    logging_tracing::init(&config).unwrap();
+  //  logging_tracing::init(&config).unwrap();
 
     let consumers = kafka::init_consumer::init_consumers(&config.kafka).unwrap();
     

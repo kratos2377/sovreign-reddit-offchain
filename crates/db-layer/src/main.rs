@@ -14,7 +14,6 @@ pub mod controller;
 pub mod state;
 pub mod error;
 pub mod conf;
-pub mod logging_tracing;
 pub mod sql_statements;
 
 
@@ -23,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
     let config = configuration::Configuration::load().unwrap();
   //  dotenv().ok();
 
-  logging_tracing::init(&config)?;
+  //logging_tracing::init(&config)?;
 
     //Connect with database
     let connection = match Database::connect(config.postgres_url.url).await {

@@ -1,0 +1,20 @@
+server:
+  port: 3005
+
+
+
+
+logging:
+  level:
+    root: warn
+    directives:
+      - namespace: cerotis
+        level: info
+      - namespace: cerotis::user::listener
+        level: trace
+      - namespace: tower_http
+        level: debug
+
+
+rabbit_mq:
+  ampq_addr: amqp://admin:password@127.0.0.1:5672/%2f

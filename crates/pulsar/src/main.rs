@@ -1,9 +1,9 @@
 use std::net::SocketAddr;
 
 use axum::{response::IntoResponse, routing::get, Router};
-use cosmic::{KafkaPublishPayload, PostTXPayload, SubRedditTXPayload, UserTXPayload, KAFKA_POST_PUBLISH_KEY, KAFKA_POST_PUBLISH_TOPIC, KAFKA_SUBREDDIT_PUBLISH_KEY, KAFKA_SUBREDDIT_PUBLISH_TOPIC, KAFKA_USER_PUBLISH_KEY, KAFKA_USER_PUBLISH_TOPIC, POST_TX_KEY, SOVEREIGN_REDDIT_ROLLUP_EVENTS, SUBREDDIT_TX_KEY, USER_TX_KEY};
+use cosmic::{utils::remove_duplicate_keys, KafkaPublishPayload, PostTXPayload, SubRedditTXPayload, UserTXPayload, KAFKA_POST_PUBLISH_KEY, KAFKA_POST_PUBLISH_TOPIC, KAFKA_SUBREDDIT_PUBLISH_KEY, KAFKA_SUBREDDIT_PUBLISH_TOPIC, KAFKA_USER_PUBLISH_KEY, KAFKA_USER_PUBLISH_TOPIC, POST_TX_KEY, SOVEREIGN_REDDIT_ROLLUP_EVENTS, SUBREDDIT_TX_KEY, USER_TX_KEY};
 use futures_util::StreamExt;
-use lapin::{options::{BasicAckOptions, BasicConsumeOptions}, types::FieldTable, Connection, ConnectionProperties};
+use lapin::{options::{BasicAckOptions, BasicConsumeOptions, QueueDeclareOptions}, types::FieldTable, Connection, ConnectionProperties};
 use rdkafka::{producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
 use serde_json::json;
 use tokio::task::JoinHandle;
@@ -18,7 +18,6 @@ use std::time::Duration;
 
 pub mod conf;
 pub mod error;
-pub mod logging_tracing;
 pub mod kafka;
 
 
@@ -28,10 +27,7 @@ async fn main() {
       let config = configuration::Configuration::load().unwrap();
   //  dotenv().ok();
 
-
-
-  logging_tracing::init(&config);
-
+  //logging_tracing::init(&config);
 
     let consume_and_publish_handle = rabbit_mq_consume_and_kafka_publish(&config).await;
     
@@ -45,9 +41,6 @@ async fn start_web_server(
     config: &ServerConfiguration,
     shutdown_handles: Vec<JoinHandle<()>>,
 ) {
-
-
-
 
     // Initialize routing
  let routes_all = Router::new()
@@ -88,10 +81,6 @@ pub async fn rabbit_mq_consume_and_kafka_publish(
         do_listen(  &producer, conf.clone() ).await;
     })
 
-
-
-    
-
 }
 
 
@@ -109,6 +98,13 @@ pub async fn do_listen(
 
 
     let channel = conn.create_channel().await.unwrap();
+
+      let queue =   channel.queue_declare(SOVEREIGN_REDDIT_ROLLUP_EVENTS,   QueueDeclareOptions::default(),
+            FieldTable::default(),
+        )
+        .await.unwrap();
+
+     println!("Declared Pulsar queue {:?}", queue);
     
     let mut consumer = channel
         .basic_consume(
@@ -127,13 +123,13 @@ pub async fn do_listen(
         let message_key = delivery.properties.kind().clone().unwrap();
 
 
-
+        println!("Message key is: {:?}" , message_key.clone());
 
         //First publish to topic and then act delivered Message
 
-        let payload : String = serde_json::from_slice(&delivery.data).unwrap();
+        let text : String = serde_json::from_slice(&delivery.data).unwrap();
 
-
+        let payload = remove_duplicate_keys(&text).unwrap();
         let rs = match message_key.to_string().as_str() {
 
             USER_TX_KEY => {
@@ -142,9 +138,11 @@ pub async fn do_listen(
                     let user_created_payload : UserTXPayload = serde_json::from_str(&payload).unwrap();
 
 
+                println!("USER CREATED PAYLOAD IS: {:?}" , user_created_payload);
+
                     //Parse Payload event and create kafka publish payload
 
-                    Ok(KafkaPublishPayload{ payload: "serde_json parse above parse payload".to_string(), 
+                    Ok(KafkaPublishPayload{ payload: serde_json::to_string(&user_created_payload).unwrap(), 
                     topic: KAFKA_USER_PUBLISH_TOPIC.to_string(), key: KAFKA_USER_PUBLISH_KEY.to_string() })
 
             },
@@ -191,6 +189,8 @@ pub async fn do_listen(
 
             let kafka_payload = rs.unwrap();
 
+               producer.begin_transaction().unwrap();
+
 
              let kafka_result = future::try_join_all(vec![kafka_payload].iter().map(|event| async move {
         let delivery_result = producer
@@ -218,25 +218,15 @@ pub async fn do_listen(
 
         },
         Err(e) =>  {
+            println!("Error is: {:?}" , e.0);
             println!("Error while producing kafka payload to topic")
         },
     };
 
-    producer.commit_transaction(Timeout::from(Duration::from_secs(5))).unwrap(); 
+    producer.commit_transaction(Timeout::from(Duration::from_secs(10))).unwrap(); 
 
-
-
-
-               
-
-        }
-
-     
-
-
-        
+        }        
     }
-
 
 }
 

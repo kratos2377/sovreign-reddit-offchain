@@ -33,7 +33,7 @@ services:
     image: redis:7-alpine
     container_name: redis-ws
     ports:
-      - "6380:6380"
+      - "6380:6379"
     command: ["redis-server", "--bind", "matchaker-cache", "--port", "6380", "--requirepass" , "eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81"]
     volumes:
       - redis_ws_data:/data
@@ -57,63 +57,67 @@ services:
       - app-network
 
   # Zookeeper for Kafka
+
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
+    image: confluentinc/cp-zookeeper:7.2.2
+    hostname: zookeeper
     container_name: zookeeper
+    ports:
+      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-      - zookeeper_logs:/var/lib/zookeeper/log
-    networks:
-      - app-network
+    mem_limit: 128m
 
-  # Kafka broker
-  kafka:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka
+
+  broker:
+    image: confluentinc/cp-kafka:7.2.2
+    hostname: broker
+    container_name: broker
     depends_on:
       - zookeeper
     ports:
+      - "29092:29092"
       - "9092:9092"
-      - "9094:9094"
+      - "9101:9101"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-    networks:
-      - app-network
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_HEAP_OPTS: '-Xmx384m -Xms128m'
+      KAFKA_JVM_PERFORMANCE_OPTS: '-client -XX:+UseG1GC -XX:+CMSClassUnloadingEnabled -XX:+CMSScavengeBeforeRemark -XX:+DisableExplicitGC -Djava.awt.headless=true'
+    mem_limit: 768m
 
   # Kafka topic initialization
-  kafka-topics:
-    image: confluentinc/cp-kafka:7.4.0
-    container_name: kafka-topics
-    depends_on:
-      - kafka
-    command: >
-      bash -c "
-        # Wait for Kafka to be ready
-        echo 'Waiting for Kafka to be ready...'
-        cub kafka-ready -b kafka:29092 1 30
+  # kafka-topics:
+  #   image: confluentinc/cp-kafka:7.4.0
+  #   container_name: kafka-topics
+  #   depends_on:
+  #     - kafka
+  #   command: >
+  #     bash -c "
+  #       # Wait for Kafka to be ready
+  #       echo 'Waiting for Kafka to be ready...'
+  #       cub kafka-ready -b localhost:9092 1 30
         
-        # Create topics
-        kafka-topics --create --topic user --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
-        kafka-topics --create --topic post --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
-        kafka-topics --create --topic subreddit --bootstrap-server kafka:29092 --partitions 3 --replication-factor 1 --if-not-exists
+  #       # Create topics
+  #       kafka-topics --create --topic user --bootstrap-server localhost:9092 --partitions 2 --replication-factor 1 --if-not-exists
+  #       kafka-topics --create --topic post --bootstrap-server localhost:9092 --partitions 2 --replication-factor 1 --if-not-exists
+  #       kafka-topics --create --topic subreddit --bootstrap-server localhost:9092 --partitions 2 --replication-factor 1 --if-not-exists
         
-        echo 'Topics created successfully!'
-        kafka-topics --list --bootstrap-server kafka:29092
-      "
-    networks:
-      - app-network
+  #       echo 'Topics created successfully!'
+  #       kafka-topics --list --bootstrap-server localhost:9092
+  #     "
+  #   networks:
+  #     - app-network
 
 volumes:
   rabbitmq_data:

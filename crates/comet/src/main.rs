@@ -1,10 +1,10 @@
 use axum::{response::IntoResponse, routing::get, Router};
 use conf::configuration;
-use cosmic::{TransactionWSEvent, SOVEREIGN_REDDIT_ROLLUP_EVENTS};
+use cosmic::{utils::remove_duplicate_keys, TransactionWSEvent, SOVEREIGN_REDDIT_ROLLUP_EVENTS};
 use deadpool_lapin::{lapin::{options::BasicPublishOptions, BasicProperties, ConnectionProperties}, Manager, Pool as RabbitPool, PoolError};
 use deadpool_redis::{redis::{AsyncCommands, ExistenceCheck, SetExpiry, SetOptions}, Config as RedisConfig};
 use reqwest::Client;
-use serde_json::json;
+use serde_json::{json, Map, Value};
 use state::AppDBState;
 use tokio::task::JoinHandle;
 use tower::ServiceBuilder;
@@ -16,7 +16,7 @@ use futures_util::{SinkExt, StreamExt, TryStreamExt};
 use reqwest_websocket::{Error, Message, RequestBuilderExt};
 use crate::conf::{config_types::ServerConfiguration, configuration::Configuration};
 
-pub mod logging_tracing;
+
 pub mod conf;
 pub mod state;
 pub mod error;
@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
 
 
-  logging_tracing::init(&config)?;
+  //logging_tracing::init(&config)?;
 
 
     let ws_handles = listen_ws_event_and_publish_to_ampq(&config).await;
@@ -95,7 +95,7 @@ pub async fn listen_ws_event_and_publish_to_ampq(
         .expect("not able to create RabbitMQ pool");
   
     let response = Client::new()
-    .get("wss://echo.websocket.org/")
+    .get("ws://127.0.0.1:12346/sequencer/events/ws")
     .upgrade() // Prepares the WebSocket upgrade.
     .send()
     .await.unwrap();
@@ -109,8 +109,20 @@ pub async fn listen_ws_event_and_publish_to_ampq(
               Ok(message) => {
                     if let Message::Text(text) = message.unwrap() {
 
+                        let clean_json = remove_duplicate_keys(&text).unwrap();
+                        let ws_event_res: Result<TransactionWSEvent , serde_json::Error>  = serde_json::from_str(&clean_json);
 
-                        let ws_event: TransactionWSEvent  = serde_json::from_str(&text).unwrap();
+                        if ws_event_res.is_err() {
+                            println!("SERDE JSON ERROR IS: {:?}" , ws_event_res.err());
+                            continue;
+
+                        }
+
+
+                        let ws_event = ws_event_res.unwrap();
+
+                        println!("WS TX EVENT RECIVED IS");
+                        println!("{:?}" , ws_event);
 
                         let mut redis_connection = redis_pool.get().await.unwrap();
 
@@ -118,10 +130,13 @@ pub async fn listen_ws_event_and_publish_to_ampq(
                         let redis_res : bool=  redis_connection.set_options(&ws_event.tx_hash, "exist" , 
                         SetOptions::default().conditional_set(ExistenceCheck::NX).with_expiration(SetExpiry::EX(600))).await.unwrap();
 
-                  let payload = serde_json::to_vec(&text).unwrap();
+
+
+                        
                         if redis_res {
 
 
+                  let payload = serde_json::to_vec(&text).unwrap();
                             let lapin_conn = rabbit_pool.get().await.unwrap();
                             let channel = lapin_conn.create_channel().await.unwrap();
 
@@ -184,3 +199,5 @@ pub async fn shutdown_signal(shutdown_handles: Vec<JoinHandle<()>>) {
         handle.abort();
     }
 }
+
+

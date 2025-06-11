@@ -23,7 +23,6 @@ nano-id = "0.4.0"
 strum_macros = "0.27.1"
 cosmic = {path="../cosmic"}
 dark-matter =  { path = "../dark-matter" }
-common-tracing = {path = "../common-tracing"}
 futures-util = "0.3.31"
 migration = { path = "../migration" }
 redis = { version = "0.26.1" , features = ["tokio-comp"] }

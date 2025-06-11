@@ -36,7 +36,6 @@ dependencies = [
  "axum 0.8.4",
  "axum-macros",
  "chrono",
- "common-tracing",
  "config",
  "cosmic",
  "dark-matter",
@@ -63,7 +62,6 @@ dependencies = [
  "axum 0.8.4",
  "axum-macros",
  "chrono",
- "common-tracing",
  "config",
  "cosmic",
  "dark-matter",
@@ -90,7 +88,6 @@ dependencies = [
  "axum 0.8.4",
  "axum-macros",
  "chrono",
- "common-tracing",
  "config",
  "cosmic",
  "dark-matter",
@@ -1029,7 +1026,6 @@ dependencies = [
  "axum 0.8.4",
  "axum-macros",
  "chrono",
- "common-tracing",
  "config",
  "cosmic",
  "deadpool 0.12.2",
@@ -1303,7 +1299,6 @@ dependencies = [
  "axum 0.8.4",
  "axum-macros",
  "chrono",
- "common-tracing",
  "config",
  "cosmic",
  "dark-matter",
@@ -2517,10 +2512,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nexus"
-version = "0.1.0"
-
-[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3194,7 +3185,6 @@ dependencies = [
  "axum 0.8.4",
  "axum-macros",
  "chrono",
- "common-tracing",
  "config",
  "cosmic",
  "futures-util",
