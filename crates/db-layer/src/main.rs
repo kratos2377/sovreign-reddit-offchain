@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>  {
 
   let routes_all = Router::new()
                           .route( "/api/v1/health", get(health))
-                           .nest( "/api/v1", schema_routes)
+                           .nest( "/api/v1/schema", schema_routes)
                             .layer(ServiceBuilder::new()
                                     .layer(CookieManagerLayer::new())
                                     .layer(CorsLayer::permissive()))

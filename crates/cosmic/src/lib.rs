@@ -96,3 +96,10 @@ pub struct TransactionWSEvent {
     pub additional_properties: HashMap<String, Value>,
 }
 
+
+
+//Schema
+
+pub const USER_SCHEMA: &str = "user";
+pub const SUBREDDIT_SCHEMA: &str = "subreddit";
+pub const POST_SCHEMA: &str = "post";

@@ -1,0 +1,40 @@
+server:
+  port: 3005
+
+
+kafka:
+  broker:
+    urls: localhost:9092
+  producer:
+    client_id:  pulsar
+    transactional_id: pulsar-transactions
+  schema_registry:
+    url: http://localhost:8081
+  topic:
+    mappings:
+      - id: user
+        topic_name: user
+        partitions: 2
+      - id: subreddit
+        topic_name: subreddit
+        partitions: 2
+      - id: post
+        topic_name: post
+        partitions: 2
+
+
+
+logging:
+  level:
+    root: warn
+    directives:
+      - namespace: cerotis
+        level: info
+      - namespace: cerotis::user::listener
+        level: trace
+      - namespace: tower_http
+        level: debug
+
+
+rabbit_mq:
+  ampq_addr: amqp://admin:password@127.0.0.1:5672/%2f

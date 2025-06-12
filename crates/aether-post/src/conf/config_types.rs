@@ -77,9 +77,7 @@ pub struct TopicProperties {
 #[allow(unused)]
 pub struct KafkaConfiguration {
     pub broker: BrokerProperties,
-      pub consumer: Vec<ConsumerConfiguration>,
-    pub schema_registry: SchemaRegistryProperties,
-    pub producer: ProducerProperties,
+    pub consumer: Vec<ConsumerConfiguration>,
     pub topic: TopicConfiguration,
 }
 

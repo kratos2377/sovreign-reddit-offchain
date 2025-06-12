@@ -178,9 +178,19 @@ pub async fn do_listen(
                 };
 
 
-                let rsp = client.post("db-layer-url").header("Content-Type", "application/json").body(post_create_payload).send().await;
+               for _i in 0..3 {
+
+                 let rsp = client.post("db-layer-url").header("Content-Type", "application/json").body(&post_create_payload).send().await;
+
+                 if rsp.is_ok() {
+                    break;
+                 }
+
+               }
             
-    
+                
+
+
                 
         }
         }

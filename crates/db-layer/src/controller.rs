@@ -4,6 +4,7 @@ use axum::extract::{Path, Query};
 use axum::{extract::State, Json};
 use chrono::Utc;
 use cosmic::payload::{AddCommentPayload, CreateAndSaveModel, GetCommentsForPosts, GetPostsForSubreddit, GetUserPostsOrCommentsPayload, JoinOrUnjoinSub, LikeOrDislikeComment, LikeOrDislikePost, UserFeedPayload};
+use cosmic::{POST_SCHEMA, SUBREDDIT_SCHEMA, USER_SCHEMA};
 use dark_matter::{comments, posts, sub_mods, subreddit, user_joined_subs, user_liked_posts, users};
 use migration::Expr;
 use sea_orm::prelude::Uuid;
@@ -33,7 +34,29 @@ pub async fn create_and_save_model(
     let postgres_conn = state.connection.clone();
 
     tokio::spawn( async move {
-        
+
+
+       let res =  match payload.schema_type {
+            USER_SCHEMA.to_string() => {
+
+                let parsed_user_payload = serde_json::from_str(&payload.data);
+
+              Ok(())
+            },
+
+            SUBREDDIT_SCHEMA.to_strting() => {
+                    Ok(())
+            },
+
+
+            POST_SCHEMA.to_string() => {
+
+                Ok(())
+
+            },
+
+            _ => Err("Invalid Scehama")
+        };
 
 
     });

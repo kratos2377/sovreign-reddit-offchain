@@ -13,7 +13,6 @@ pub static SERVER_PORT: AtomicU16 = AtomicU16::new(0);
 #[allow(unused)]
 pub struct Configuration {
     pub kafka: KafkaConfiguration,
-    pub rabbit_mq: RabbitMQConfiguration,
     pub server: ServerConfiguration,
     pub logging: LoggingConfiguration,
 }
