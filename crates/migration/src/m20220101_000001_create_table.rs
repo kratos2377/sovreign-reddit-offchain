@@ -19,6 +19,8 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(Users::Username).string())
+                    .col(ColumnDef::new(Users::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Users::UpdatedAt).date_time().not_null())
                     .to_owned(),
             )
             .await?;
@@ -37,6 +39,8 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Subreddit::Subname).string())
                     .col(ColumnDef::new(Subreddit::Sub_Description).string())
+                                        .col(ColumnDef::new(Subreddit::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Subreddit::UpdatedAt).date_time().not_null())
                     .to_owned(),
             )
             .await?;
@@ -61,6 +65,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Posts::Upvote).integer())
                     .col(ColumnDef::new(Posts::Downvote).integer())
                     .col(ColumnDef::new(Posts::Score).integer())
+                                        .col(ColumnDef::new(Posts::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Posts::UpdatedAt).date_time().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_posts_user_sov_id")
@@ -95,6 +101,8 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(UserJoinedSubs::User_Sov_Id).string())
                     .col(ColumnDef::new(UserJoinedSubs::Sub_Sov_Id).string())
+                                        .col(ColumnDef::new(UserJoinedSubs::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(UserJoinedSubs::UpdatedAt).date_time().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_user_joined_subs_user_sov_id")
@@ -133,6 +141,8 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Comments::Upvote).integer())
                     .col(ColumnDef::new(Comments::Downvote).integer())
                     .col(ColumnDef::new(Comments::Score).integer())
+                                        .col(ColumnDef::new(Comments::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(Comments::UpdatedAt).date_time().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_comments_user_sov_id")
@@ -167,6 +177,8 @@ impl MigrationTrait for Migration {
                             .primary_key(),
                     )
                     .col(ColumnDef::new(SubMods::User_Sov_Id).string())
+                                        .col(ColumnDef::new(SubMods::CreatedAt).date_time().not_null())
+                    .col(ColumnDef::new(SubMods::UpdatedAt).date_time().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_sub_mods_user_sov_id")
@@ -307,6 +319,8 @@ enum Users {
     Table,
     Sov_Id,
     Username,
+        CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(DeriveIden)]
@@ -314,7 +328,9 @@ enum Subreddit {
     Table,
     Sub_Sov_Id,
     Subname,
-    Sub_Description
+    Sub_Description,
+        CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(DeriveIden)]
@@ -329,6 +345,8 @@ enum Posts {
     Upvote,
     Downvote,
     Score,
+        CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(DeriveIden)]
@@ -337,6 +355,8 @@ enum UserJoinedSubs {
     Id,
     User_Sov_Id,
     Sub_Sov_Id,
+        CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(DeriveIden)]
@@ -349,6 +369,8 @@ enum Comments {
     Upvote,
     Downvote,
     Score,
+        CreatedAt,
+    UpdatedAt,
 }
 
 #[derive(Iden)]
@@ -356,4 +378,6 @@ enum SubMods {
     Table,
     Sub_Sov_Id,
     User_Sov_Id,
+        CreatedAt,
+    UpdatedAt,
 }

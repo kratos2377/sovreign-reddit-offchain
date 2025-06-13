@@ -12,8 +12,6 @@ pub static SERVER_PORT: AtomicU16 = AtomicU16::new(0);
 #[derive(Debug, Deserialize , Clone)]
 #[allow(unused)]
 pub struct Configuration {
-    pub kafka: KafkaConfiguration,
-    pub rabbit_mq: RabbitMQConfiguration,
     pub server: ServerConfiguration,
     pub logging: LoggingConfiguration,
     pub redis_url: RedisDBUrl,

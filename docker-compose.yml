@@ -17,28 +17,26 @@ services:
       - app-network
 
   # Redis instance for API responses
-  redis-api:
-    image: redis:7-alpine
-    container_name: redis-api
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_api_data:/data
-    networks:
-      - app-network
-
-  # Redis instance for WebSocket transaction HAs
   redis-ws:
     image: redis:7-alpine
     container_name: redis-ws
     ports:
-      - "6380:6379"
-    command: ["redis-server", "--bind", "matchaker-cache", "--port", "6380", "--requirepass" , "eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81"]
+      - "6379:6379"
+    command: redis-server --appendonly yes
     volumes:
       - redis_ws_data:/data
     networks:
       - app-network
+
+  # Redis instance for WebSocket transaction HAs
+  redis-api:
+    image: redis:7-alpine
+    container_name: redis-api
+    ports:
+      - "6380:6380"
+    command: ["redis-server", "--bind", "redis-api", "--port", "6380", "--requirepass" , "eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81"]
+    volumes:
+      - redis_api_data:/data
 
   # PostgreSQL database
   postgres:
@@ -47,14 +45,17 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: myapp
+      POSTGRES_DB: reddit-db-layer
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - app-network
+      - ./scripts/create-databases.sh:/docker-entrypoint-initdb.d/create-databases.sh:ro
+    mem_limit: 1024m
 
   # Zookeeper for Kafka
 

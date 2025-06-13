@@ -5,32 +5,26 @@ server:
 kafka:
   broker:
     urls: localhost:9092
-  producer:
-    client_id:  pulsar
-    transactional_id: pulsar-transactions
-  schema_registry:
-    url: http://localhost:8081
+  consumer:
+    - id: subreddit
+      topic:
+        - subreddit
+      client_id: subreddit.client.id
+      group_id: subreddit.group.id
   topic:
     mappings:
-      - id: user
-        topic_name: user
-        partitions: 2
       - id: subreddit
         topic_name: subreddit
         partitions: 2
-      - id: post
-        topic_name: post
-        partitions: 2
-
 
 
 logging:
   level:
     root: warn
     directives:
-      - namespace: cerotis
+      - namespace: aether-subreddit
         level: info
-      - namespace: cerotis::user::listener
+      - namespace: aether-subreddit::subreddit::listener
         level: trace
       - namespace: tower_http
         level: debug

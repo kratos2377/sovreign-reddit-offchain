@@ -1,0 +1,19 @@
+server:
+  port: 3005
+
+postgres_url:
+  url: postgres://postgres:password@localhost:5432/reddit-db-layer
+
+redis_url:
+  url: redis://localhost:6380
+
+logging:
+  level:
+    root: warn
+    directives:
+      - namespace: db-layer
+        level: info
+      - namespace: db-layer::user::listener
+        level: trace
+      - namespace: tower_http
+        level: debug

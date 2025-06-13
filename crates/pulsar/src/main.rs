@@ -160,7 +160,7 @@ pub async fn do_listen(
                 println!("Subreddit CREATED PAYLOAD IS: {:?}" , tx_ws_payload);
 
 
-                let subredd_created_event = tx_ws_payload.additional_properties.get("value").unwrap().get("subreddit_created_event").unwrap();
+                let subredd_created_event = tx_ws_payload.additional_properties.get("value").unwrap().get("sub_reddit_created_event").unwrap();
 
                     //Parse Payload event and create kafka publish payload
 

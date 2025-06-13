@@ -179,7 +179,7 @@ pub async fn do_listen(
 
 
             for i in 0..3 {
-                    let rsp = client.post("http://localhost:3006/api/v1/schema/create/user").header("Content-Type", "application/json")
+                    let rsp = client.post("http://localhost:3006/api/v1/model/create/user").header("Content-Type", "application/json")
                     .body(&user_create_payload).send().await;
             
                 if rsp.is_ok() {

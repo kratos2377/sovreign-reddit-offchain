@@ -180,7 +180,7 @@ pub async fn do_listen(
 
                 
                 for _i in 0..3 {
-                                  let rsp = client.post("http://localhost:3006/api/v1/schema/create/subreddit").header("Content-Type", "application/json")
+                                  let rsp = client.post("http://localhost:3006/api/v1/model/create/subreddit").header("Content-Type", "application/json")
                 .body(&reddit_user_payload).send().await;
 
 
