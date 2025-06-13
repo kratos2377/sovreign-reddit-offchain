@@ -59,13 +59,29 @@ pub async fn create_and_save_model(
                 let active_sub_model = subreddit::ActiveModel{
                     created_at: Set(Utc::now().naive_utc()),
                     updated_at: Set(Utc::now().naive_utc()),
-                    sub_sov_id: Set(parsed_sub_payload.subaddress),
+                    sub_sov_id: Set(parsed_sub_payload.subaddress.clone()),
                     subname: Set(parsed_sub_payload.subname),
                     sub_description: Set(parsed_sub_payload.description),
                 };
 
+                let active_sub_mods_model = sub_mods::ActiveModel {
+                   sub_sov_id: Set(parsed_sub_payload.subaddress.clone()),
+                    user_sov_id: Set(parsed_sub_payload.mods.get(0).unwrap().to_string().clone()),
+                    created_at: Set(Utc::now().naive_utc()),
+                    updated_at: Set(Utc::now().naive_utc()),
+                };
 
-                active_sub_model.insert(&postgres_conn).await;
+                let user_joined_sub_active_model = user_joined_subs::ActiveModel {
+                    id: Set(Uuid::new_v4()),
+                     user_sov_id: Set(parsed_sub_payload.mods.get(0).unwrap().to_string()),
+                         sub_sov_id: Set(parsed_sub_payload.subaddress),
+                     created_at: Set(Utc::now().naive_utc()),
+                    updated_at: Set(Utc::now().naive_utc()),
+                };
+
+                let _ = active_sub_model.insert(&postgres_conn).await;
+                let _ = active_sub_mods_model.insert(&postgres_conn).await;
+                let _ = user_joined_sub_active_model.insert(&postgres_conn).await;
 
 
         } else  {
@@ -79,18 +95,29 @@ pub async fn create_and_save_model(
                     created_at: Set(Utc::now().naive_utc()),
                     updated_at: Set(Utc::now().naive_utc()),
                     sub_sov_id: Set(parsed_reddit_payload.subaddress),
-                    post_sov_id: Set(parsed_reddit_payload.post_address),
+                    post_sov_id: Set(parsed_reddit_payload.post_address.clone()),
                     title: Set(parsed_reddit_payload.title),
                     content: Set(parsed_reddit_payload.content),
                     flair: Set(parsed_reddit_payload.flair),
-                    user_sov_id: Set(parsed_reddit_payload.user_address),
-                    upvote: Set(0),
+                    user_sov_id: Set(parsed_reddit_payload.user_address.clone()),
+                    upvote: Set(1),
                     downvote: Set(0),
-                    score: Set(0),
+                    score: Set(1),
                 };
 
 
+                let user_liked_post_active_model = user_liked_posts::ActiveModel {
+                    id: Set(Uuid::new_v4()),
+                    post_sov_id: Set(parsed_reddit_payload.post_address),
+                    value: Set(1 as i32),
+                     created_at: Set(Utc::now().naive_utc()),
+                    updated_at: Set(Utc::now().naive_utc()),
+                    user_sov_id: Set(parsed_reddit_payload.user_address),
+                };
+
                 active_post_model.insert(&postgres_conn).await;
+
+                let _ = user_liked_post_active_model.insert(&postgres_conn).await;
 
         };
 
