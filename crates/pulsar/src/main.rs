@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use axum::{response::IntoResponse, routing::get, Router};
-use cosmic::{utils::remove_duplicate_keys, KafkaPublishPayload, PostTXPayload, SubRedditTXPayload, UserTXPayload, KAFKA_POST_PUBLISH_KEY, KAFKA_POST_PUBLISH_TOPIC, KAFKA_SUBREDDIT_PUBLISH_KEY, KAFKA_SUBREDDIT_PUBLISH_TOPIC, KAFKA_USER_PUBLISH_KEY, KAFKA_USER_PUBLISH_TOPIC, POST_TX_KEY, SOVEREIGN_REDDIT_ROLLUP_EVENTS, SUBREDDIT_TX_KEY, USER_TX_KEY};
+use cosmic::{utils::remove_duplicate_keys, KafkaPublishPayload, PostTXPayload, SubRedditTXPayload, TransactionWSEvent, UserTXPayload, KAFKA_POST_PUBLISH_KEY, KAFKA_POST_PUBLISH_TOPIC, KAFKA_SUBREDDIT_PUBLISH_KEY, KAFKA_SUBREDDIT_PUBLISH_TOPIC, KAFKA_USER_PUBLISH_KEY, KAFKA_USER_PUBLISH_TOPIC, POST_TX_KEY, SOVEREIGN_REDDIT_ROLLUP_EVENTS, SUBREDDIT_TX_KEY, USER_TX_KEY};
 use futures_util::StreamExt;
 use lapin::{options::{BasicAckOptions, BasicConsumeOptions, QueueDeclareOptions}, types::FieldTable, Connection, ConnectionProperties};
 use rdkafka::{producer::{FutureProducer, FutureRecord, Producer}, util::Timeout};
@@ -135,27 +135,36 @@ pub async fn do_listen(
             USER_TX_KEY => {
 
 
-                    let user_created_payload : UserTXPayload = serde_json::from_str(&payload).unwrap();
+                    let tx_ws_payload : TransactionWSEvent = serde_json::from_str(&payload).unwrap();
 
 
-                println!("USER CREATED PAYLOAD IS: {:?}" , user_created_payload);
+                println!("USER CREATED PAYLOAD IS: {:?}" , tx_ws_payload);
+
+
+                let user_event_paylod = tx_ws_payload.additional_properties.get("value").unwrap().get("user_created_event").unwrap();
+
+                    
 
                     //Parse Payload event and create kafka publish payload
 
-                    Ok(KafkaPublishPayload{ payload: serde_json::to_string(&user_created_payload).unwrap(), 
+                    Ok(KafkaPublishPayload{ payload: serde_json::to_string(&user_event_paylod).unwrap(), 
                     topic: KAFKA_USER_PUBLISH_TOPIC.to_string(), key: KAFKA_USER_PUBLISH_KEY.to_string() })
 
             },
 
             SUBREDDIT_TX_KEY => {
 
+                let tx_ws_payload : TransactionWSEvent = serde_json::from_str(&payload).unwrap();
 
-                 let subreddit_created_payload : SubRedditTXPayload = serde_json::from_str(&payload).unwrap();
 
+                println!("Subreddit CREATED PAYLOAD IS: {:?}" , tx_ws_payload);
+
+
+                let subredd_created_event = tx_ws_payload.additional_properties.get("value").unwrap().get("subreddit_created_event").unwrap();
 
                     //Parse Payload event and create kafka publish payload
 
-                    Ok(KafkaPublishPayload{ payload: "serde_json parse above parse payload".to_string(), 
+                    Ok(KafkaPublishPayload{ payload: serde_json::to_string(&subredd_created_event).unwrap(), 
                     topic: KAFKA_SUBREDDIT_PUBLISH_TOPIC.to_string(), key: KAFKA_SUBREDDIT_PUBLISH_KEY.to_string() })
 
 
@@ -164,12 +173,18 @@ pub async fn do_listen(
 
             POST_TX_KEY => {
 
-                    let post_created_payload : PostTXPayload = serde_json::from_str(&payload).unwrap();
+                
+                let tx_ws_payload : TransactionWSEvent = serde_json::from_str(&payload).unwrap();
 
+
+                println!("Post CREATED PAYLOAD IS: {:?}" , tx_ws_payload);
+
+
+                let post_created_payload = tx_ws_payload.additional_properties.get("value").unwrap().get("post_created_event").unwrap();
 
                     //Parse Payload event and create kafka publish payload
 
-                    Ok(KafkaPublishPayload{ payload: "serde_json parse above parse payload".to_string(), 
+                    Ok(KafkaPublishPayload{ payload: serde_json::to_string(&post_created_payload).unwrap(), 
                     topic: KAFKA_POST_PUBLISH_TOPIC.to_string(), key: KAFKA_POST_PUBLISH_KEY.to_string() })
 
 

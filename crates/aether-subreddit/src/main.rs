@@ -172,13 +172,22 @@ pub async fn do_listen(
                 //Parse subreddit payload
                 let client = context.get_reqwest_client();
 
-                let user_create_payload = CreateAndSaveModel {
+                let reddit_user_payload = CreateAndSaveModel {
                     schema_type: "subreddit".to_string(),
                     data: payload,
                 };
 
 
-                let rsp = client.post("db-layer-url").header("Content-Type", "application/json").body(user_create_payload).send().await;
+                
+                for _i in 0..3 {
+                                  let rsp = client.post("http://localhost:3006/api/v1/schema/create/subreddit").header("Content-Type", "application/json")
+                .body(&reddit_user_payload).send().await;
+
+
+            if rsp.is_ok() {
+                break;
+            }
+                }
             
     
                 

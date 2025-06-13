@@ -24,39 +24,29 @@ pub const POST_TX_KEY: &str = "Reddit/PostCreatedEvent";
 
 #[derive(Serialize , Deserialize , Clone , Debug)]
 pub struct UserTXPayload {
-    pub tx_hash: String,
-    #[serde(rename = "type")]
-    pub event_type: String,
-    pub number: u64,
-    pub key: String,
-    #[serde(flatten)]
-    pub additional_properties: HashMap<String, Value>,
-
+    pub username: String,
+    pub user_address: String
 }
 
 
 #[derive(Serialize , Deserialize , Clone)]
 pub struct SubRedditTXPayload {
-    pub tx_hash: String,
-    #[serde(rename = "type")]
-    pub event_type: String,
-    pub number: u64,
-    pub key: String,
-    pub value: String,
-    pub module: String,
+    pub subname: String ,
+    pub description: String, 
+    pub subaddress: String , 
+    pub mods: Vec<String>
 }
 
 
 
 #[derive(Serialize , Deserialize , Clone)]
 pub struct PostTXPayload {
-    pub tx_hash: String,
-    #[serde(rename = "type")]
-    pub event_type: String,
-    pub number: u64,
-    pub key: String,
-    pub value: String,
-    pub module: String,
+    pub title: String,
+    pub content: String,
+    pub subaddress: String,
+    pub post_address: String,
+    pub flair: String,
+    pub user_address: String
 }
 
 
@@ -103,3 +93,4 @@ pub struct TransactionWSEvent {
 pub const USER_SCHEMA: &str = "user";
 pub const SUBREDDIT_SCHEMA: &str = "subreddit";
 pub const POST_SCHEMA: &str = "post";
+
