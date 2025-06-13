@@ -1,10 +1,11 @@
+
 use std::collections::HashMap;
 
 use axum::extract::{Path, Query};
 use axum::{extract::State, Json};
 use chrono::Utc;
 use cosmic::payload::{AddCommentPayload, CreateAndSaveModel, GetCommentsForPosts, GetPostsForSubreddit, GetUserPostsOrCommentsPayload, JoinOrUnjoinSub, LikeOrDislikeComment, LikeOrDislikePost, UserFeedPayload};
-use cosmic::{POST_SCHEMA, SUBREDDIT_SCHEMA, USER_SCHEMA};
+use cosmic::{PostTXPayload, SubRedditTXPayload, UserTXPayload, POST_SCHEMA, SUBREDDIT_SCHEMA, USER_SCHEMA};
 use dark_matter::{comments, posts, sub_mods, subreddit, user_joined_subs, user_liked_posts, users};
 use migration::Expr;
 use sea_orm::prelude::Uuid;
@@ -34,28 +35,63 @@ pub async fn create_and_save_model(
     let postgres_conn = state.connection.clone();
 
     tokio::spawn( async move {
+         if payload.schema_type == USER_SCHEMA.to_string() {
+
+                let parsed_user_payload_rs: Result<UserTXPayload, serde_json::Error> = serde_json::from_str(&payload.data);
+                let parsed_user_payload = parsed_user_payload_rs.unwrap();
+
+                let active_user_model = users::ActiveModel{
+                    sov_id: Set(parsed_user_payload.user_address),
+                    username: Set(parsed_user_payload.username),
+                    created_at: Set(Utc::now().naive_utc()),
+                    updated_at: Set(Utc::now().naive_utc()),
+                };
 
 
-       let res =  match payload.schema_type {
-            USER_SCHEMA.to_string() => {
+                active_user_model.insert(&postgres_conn).await;
+                
 
-                let parsed_user_payload = serde_json::from_str(&payload.data);
+        } else if payload.schema_type == SUBREDDIT_SCHEMA.to_string() {
 
-              Ok(())
-            },
+              let parsed_sub_payload_rs: Result<SubRedditTXPayload, serde_json::Error> = serde_json::from_str(&payload.data);
+                let parsed_sub_payload = parsed_sub_payload_rs.unwrap();
 
-            SUBREDDIT_SCHEMA.to_strting() => {
-                    Ok(())
-            },
+                let active_sub_model = subreddit::ActiveModel{
+                    created_at: Set(Utc::now().naive_utc()),
+                    updated_at: Set(Utc::now().naive_utc()),
+                    sub_sov_id: Set(parsed_sub_payload.subaddress),
+                    subname: Set(parsed_sub_payload.subname),
+                    sub_description: Set(parsed_sub_payload.description),
+                };
 
 
-            POST_SCHEMA.to_string() => {
+                active_sub_model.insert(&postgres_conn).await;
 
-                Ok(())
 
-            },
+        } else  {
 
-            _ => Err("Invalid Scehama")
+
+                  
+                     let parsed_post_payload_rsp: Result<PostTXPayload, serde_json::Error> = serde_json::from_str(&payload.data);
+                let parsed_reddit_payload = parsed_post_payload_rsp.unwrap();
+
+                let active_post_model = posts::ActiveModel{
+                    created_at: Set(Utc::now().naive_utc()),
+                    updated_at: Set(Utc::now().naive_utc()),
+                    sub_sov_id: Set(parsed_reddit_payload.subaddress),
+                    post_sov_id: Set(parsed_reddit_payload.post_address),
+                    title: Set(parsed_reddit_payload.title),
+                    content: Set(parsed_reddit_payload.content),
+                    flair: Set(parsed_reddit_payload.flair),
+                    user_sov_id: Set(parsed_reddit_payload.user_address),
+                    upvote: Set(0),
+                    downvote: Set(0),
+                    score: Set(0),
+                };
+
+
+                active_post_model.insert(&postgres_conn).await;
+
         };
 
 
