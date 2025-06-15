@@ -60,7 +60,7 @@ pub async fn create_and_save_model(
                     created_at: Set(Utc::now().naive_utc()),
                     updated_at: Set(Utc::now().naive_utc()),
                     sub_sov_id: Set(parsed_sub_payload.subaddress.clone()),
-                    subname: Set(parsed_sub_payload.subname),
+                    subname: Set(parsed_sub_payload.subname.clone()),
                     sub_description: Set(parsed_sub_payload.description),
                 };
 
@@ -69,6 +69,7 @@ pub async fn create_and_save_model(
                     user_sov_id: Set(parsed_sub_payload.mods.get(0).unwrap().to_string().clone()),
                     created_at: Set(Utc::now().naive_utc()),
                     updated_at: Set(Utc::now().naive_utc()),
+                    subname: Set(parsed_sub_payload.subname),
                 };
 
                 let user_joined_sub_active_model = user_joined_subs::ActiveModel {
@@ -723,6 +724,34 @@ ORDER BY p.created_time DESC"#, [payload.user_sov_id.clone().into()])
 
 }
 
+
+pub async fn get_user_subs(
+    state: State<DBState>,
+    Path(user_sov_id): Path<String>,
+) -> APIResult<Json<Value>> {
+
+
+    if user_sov_id == "" { 
+
+        return Err(Error::MissingParams)
+    }
+
+    let sub_mods_rsp = sub_mods::Entity::find_by_user_id(&user_sov_id).all(&state.connection).await;
+
+    if sub_mods_rsp.is_err() {
+        return Err(Error::DBFetchError)
+    }
+
+    let body = Json(json!({
+        "result": {
+            "success": true
+        },
+        "sub_mods": sub_mods_rsp.unwrap()
+    }));
+
+    Ok(body)
+
+    }
 pub fn get_redis_key(schema: &str , query_map: &HashMap<String , String>) -> String {
      let mut key = schema.to_string();
     
