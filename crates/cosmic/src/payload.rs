@@ -102,3 +102,7 @@ pub struct UserFeedPayload {
     pub user_sov_id: String
 }
 
+#[derive(Clone , Deserialize , Serialize)]
+pub struct SearchSubredditsPayload {
+    pub query: String
+}

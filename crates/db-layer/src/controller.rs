@@ -1,10 +1,9 @@
-
 use std::collections::HashMap;
 
 use axum::extract::{Path, Query};
 use axum::{extract::State, Json};
 use chrono::Utc;
-use cosmic::payload::{AddCommentPayload, CreateAndSaveModel, GetCommentsForPosts, GetPostsForSubreddit, GetUserPostsOrCommentsPayload, JoinOrUnjoinSub, LikeOrDislikeComment, LikeOrDislikePost, UserFeedPayload};
+use cosmic::payload::{AddCommentPayload, CreateAndSaveModel, GetCommentsForPosts, GetPostsForSubreddit, GetUserPostsOrCommentsPayload, JoinOrUnjoinSub, LikeOrDislikeComment, LikeOrDislikePost, SearchSubredditsPayload, UserFeedPayload};
 use cosmic::{PostTXPayload, SubRedditTXPayload, UserTXPayload, POST_SCHEMA, SUBREDDIT_SCHEMA, USER_SCHEMA};
 use dark_matter::{comments, posts, sub_mods, subreddit, user_joined_subs, user_liked_posts, users};
 use migration::Expr;
@@ -20,6 +19,7 @@ use crate::{state::DBState};
 use crate::error::{Error , Result as APIResult};
 use serde_json::Value;
 use sea_orm::ColumnTrait;
+
 pub async fn create_and_save_model(
         state: State<DBState>,
         Path(schema): Path<String>,
@@ -139,107 +139,86 @@ pub async fn create_and_save_model(
 
 pub async fn fetch_model_from_db_by_primary_key(
     mut state: State<DBState>,
-    Path(schema): Path<String>,
-    params: Query<HashMap<String, String>>
+    Path((schema, primary_key)): Path<(String , String)>,
 ) -> APIResult<Json<Value>> {
-
-    //API to get models by Their respective primary keys
+    use serde_json::json;
+    use serde_json;
 
     let rsp = match schema.as_str() {
-
         "user" => {
+            let redis_key = get_redis_key("user", &primary_key);
+            let redis_rsp: RedisResult<String> = state.redis_connection.get(&redis_key).await;
 
-            let redis_key = get_redis_key("user", &params.0);
-            let redis_rsp: RedisResult<String> = state.redis_connection.get(redis_key).await;
-
-
-            if redis_rsp.is_err() {
-
-                let postgres_resp = users::Entity::find_by_id(params.0.get("user_sov_id").unwrap()).one(&state.connection)
-                .await;
-
-
-              Ok("user response")
-
-
+            if let Ok(cached) = redis_rsp {
+                // Cache hit: parse Vec<Model> from JSON
+                let models: Vec<users::Model> = serde_json::from_str(&cached).unwrap_or_default();
+                Ok(json!({"models": models}))
             } else {
-                //parse result and send response
-                Ok("user response")
+                // Cache miss: fetch from Postgres
+                let postgres_resp = users::Entity::find_by_id(primary_key).one(&state.connection).await;
+                match postgres_resp {
+                    Ok(opt_model) => {
+                        let models: Vec<users::Model> = opt_model.into_iter().collect();
+                        let json_str = serde_json::to_string(&models).unwrap();
+                        let _: RedisResult<()> = state.redis_connection.set_ex(&redis_key, json_str.clone(), 60).await;
+                        Ok(json!({"models": models}))
+                    },
+                    Err(_) => Err("user fetch error"),
+                }
             }
-
-
-
         },
-
         "subreddit" => {
-      let redis_key = get_redis_key("subreddit", &params.0);
-
-
-             let redis_rsp: RedisResult<String> = state.redis_connection.get(redis_key).await;
-
-
-            if redis_rsp.is_err() {
-
-                let postgres_resp = subreddit::Entity::find_by_id(params.get("sub_sov_id").unwrap()).one(&state.connection)
-                .await;
-
-
-              Ok("sub response")
-
-
+            let redis_key = get_redis_key("subreddit", &primary_key);
+            let redis_rsp: RedisResult<String> = state.redis_connection.get(&redis_key).await;
+            if let Ok(cached) = redis_rsp {
+                let models: Vec<subreddit::Model> = serde_json::from_str(&cached).unwrap_or_default();
+                Ok(json!({"models": models}))
             } else {
-                //parse result and send response
-                Ok("sub response")
+                let postgres_resp = subreddit::Entity::find_by_id(primary_key).one(&state.connection).await;
+                match postgres_resp {
+                    Ok(opt_model) => {
+                        let models: Vec<subreddit::Model> = opt_model.into_iter().collect();
+                        let json_str = serde_json::to_string(&models).unwrap();
+                        let _: RedisResult<()> = state.redis_connection.set_ex(&redis_key, json_str.clone(), 60).await;
+                        Ok(json!({"models": models}))
+                    },
+                    Err(_) => Err("subreddit fetch error"),
+                }
             }
-
-
         },
-
         "post" => {
-           let redis_key = get_redis_key("post", &params.0);
-
-
-            
-             let redis_rsp: RedisResult<String> = state.redis_connection.get(redis_key).await;
-            if redis_rsp.is_err() {
-
-                let postgres_resp = subreddit::Entity::find_by_id(params.get("post_sov_id").unwrap()).one(&state.connection)
-                .await;
-
-
-              Ok("post response")
-
-
+            let redis_key = get_redis_key("post", &primary_key);
+            let redis_rsp: RedisResult<String> = state.redis_connection.get(&redis_key).await;
+            if let Ok(cached) = redis_rsp {
+                let models: Vec<posts::Model> = serde_json::from_str(&cached).unwrap_or_default();
+                Ok(json!({"models": models}))
             } else {
-                //parse result and send response
-                Ok("post response")
+                let postgres_resp = posts::Entity::find_by_id(primary_key).one(&state.connection).await;
+                match postgres_resp {
+                    Ok(opt_model) => {
+                        let models: Vec<posts::Model> = opt_model.into_iter().collect();
+                        let json_str = serde_json::to_string(&models).unwrap();
+                        let _: RedisResult<()> = state.redis_connection.set_ex(&redis_key, json_str.clone(), 60).await;
+                        Ok(json!({"models": models}))
+                    },
+                    Err(_) => Err("post fetch error"),
+                }
             }
-
         },
-
-        _ => {
-            Err("Invalid Schema")
-        }
-
-
+        _ => Err("Invalid Schema"),
     };
 
-
-
-    if rsp.is_err() {
+    if let Err(_) = rsp {
         return Err(Error::UnexpectedError)
     }
 
-    //Add model response here
-       let body = Json(json!({
-         "result": {
-             "success": true
-         },
-     }));
- 
-     Ok(body)
-
-
+    let body = Json(json!({
+        "result": {
+            "success": true
+        },
+        "data": rsp.unwrap()
+    }));
+    Ok(body)
 }
 
 
@@ -752,13 +731,12 @@ pub async fn get_user_subs(
     Ok(body)
 
     }
-pub fn get_redis_key(schema: &str , query_map: &HashMap<String , String>) -> String {
+pub fn get_redis_key(schema: &str , primary_key: &str) -> String {
      let mut key = schema.to_string();
     
-    for (k, v) in query_map {
         key.push('_');
-        key.push_str(&v);
-    }
+        key.push_str(primary_key);
+    
     
     key
 }
@@ -772,4 +750,28 @@ pub fn get_redis_key_from_keys(schema: &str , additional_key: &str , id_key: &st
     key.push_str(id_key);
     
     key
+}
+
+/// Search subreddits by subname (case-insensitive, contains)
+pub async fn search_subreddits_by_name(
+    state: State<DBState>,
+    payload: Json<SearchSubredditsPayload>
+) -> APIResult<Json<Value>> {
+    if payload.query.is_empty() {
+        return Err(Error::MissingParams);
+    }
+    let subreddits = subreddit::Entity::find()
+        .filter(subreddit::Column::Subname.like(format!("%{}%", payload.query)))
+        .all(&state.connection)
+        .await;
+    match subreddits {
+        Ok(results) => {
+            let body = Json(json!({
+                "result": { "success": true },
+                "subreddits": results
+            }));
+            Ok(body)
+        },
+        Err(_) => Err(Error::DBFetchError),
+    }
 }
