@@ -73,4 +73,10 @@ use crate::{posts, sub_mods, subreddit, user_joined_subs, users};
     //         .one(db)
     //         .await
    // }
+
+
+//    pub async fn find_with_search_query(query: &str) -> Select<Entity> {
+//     Self::find()
+//         .filter(Expr::col(Column::Subname).ilike(format!("%{}%", query)))
+// }
 }

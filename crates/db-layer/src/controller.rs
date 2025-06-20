@@ -8,7 +8,7 @@ use cosmic::{PostTXPayload, SubRedditTXPayload, UserTXPayload, POST_SCHEMA, SUBR
 use dark_matter::{comments, posts, sub_mods, subreddit, user_joined_subs, user_liked_posts, users};
 use migration::Expr;
 use sea_orm::prelude::Uuid;
-use sea_orm::{ActiveModelTrait, ConnectionTrait, DbBackend, QueryFilter, Statement};
+use sea_orm::{ActiveModelTrait, ConnectionTrait, DbBackend, QueryFilter, QueryOrder, Statement};
 use migration::extension::postgres;
 use redis::{AsyncCommands, RedisResult};
 use sea_orm::{EntityTrait, Set};
@@ -69,7 +69,7 @@ pub async fn create_and_save_model(
                     user_sov_id: Set(parsed_sub_payload.mods.get(0).unwrap().to_string().clone()),
                     created_at: Set(Utc::now().naive_utc()),
                     updated_at: Set(Utc::now().naive_utc()),
-                    subname: Set(parsed_sub_payload.subname),
+                    subname: Set(parsed_sub_payload.subname.clone()),
                 };
 
                 let user_joined_sub_active_model = user_joined_subs::ActiveModel {
@@ -78,6 +78,7 @@ pub async fn create_and_save_model(
                          sub_sov_id: Set(parsed_sub_payload.subaddress),
                      created_at: Set(Utc::now().naive_utc()),
                     updated_at: Set(Utc::now().naive_utc()),
+                    subname: Set(parsed_sub_payload.subname),
                 };
 
                 let _ = active_sub_model.insert(&postgres_conn).await;
@@ -263,6 +264,7 @@ pub async fn join_and_unjoin_sub(
             id: Set(Uuid::new_v4()),
         created_at: Set(Utc::now().naive_utc()),
         updated_at: Set(Utc::now().naive_utc()),
+        subname: Set(payload.sub_name.clone()),
         };
 
        let rsp =  sub_mod_active_model.insert(&state.connection).await;
@@ -657,50 +659,48 @@ pub async fn get_user_feed(
     }
 
 
-    let result = posts::Entity::find().from_raw_sql(
-        Statement::from_sql_and_values(DbBackend::Postgres, 
-            r#"SELECT 
-    p.post_sov_id,
-    p.title,
-    p.content,
-    p.flair,
-    p.upvote,
-    p.downvote,
-    p.score,
-    s.subname,
-    s.subdescription,
-    u.username AS post_author,
-    p.user_sov_id AS author_sov_id
-FROM posts p
-INNER JOIN subreddit s ON p.sub_sov_id = s.sub_sov_id
-INNER JOIN users u ON p.user_sov_id = u.sov_id
-INNER JOIN user_joined_subs ujs ON s.sub_sov_id = ujs.sub_sov_id
-WHERE ujs.user_sov_id = $1
-ORDER BY p.created_time DESC"#, [payload.user_sov_id.clone().into()])
-    ).all(&state.connection).await;
+    let user_joined_subs_rsp = user_joined_subs::Entity::find_by_user_sov_id(&payload.user_sov_id).all(&state.connection).await;
 
-
-
-      if result.is_err() {
-        println!("The error while getting online friends is: {:?}", result.as_ref().err());
-        println!("Error Is: {:?}", result.unwrap_err());
-        return Err(Error::ErrorWhileFetchingUserFeed)
+    if user_joined_subs_rsp.is_err() {
+        return Err(Error::DBFetchError)
     }
 
-    
-          
-   
+    let user_joined_subs = user_joined_subs_rsp.unwrap();
+
+    // Extract sub_sov_ids from user's joined subreddits
+    let sub_sov_ids: Vec<String> = user_joined_subs.iter().map(|sub| sub.sub_sov_id.clone()).collect();
+
+    if sub_sov_ids.is_empty() {
+        let body = Json(json!({
+            "result": {
+                "success": true,
+            },
+            "feed_posts": []
+        }));
+        return Ok(body);
+    }
+
+    // Get posts where sub_sov_id is in the user's joined subreddits
+    let posts_result = posts::Entity::find()
+        .filter(posts::Column::SubSovId.is_in(sub_sov_ids))
+        .order_by_desc(posts::Column::CreatedAt)
+        .all(&state.connection)
+        .await;
+
+    if posts_result.is_err() {
+        return Err(Error::DBFetchError)
+    }
+
+
 
     let body = Json(json!({
-		"result": {
-			"success": true,
-		},
-        "feed_posts": result.unwrap()
-	}));
+        "result": {
+            "success": true,
+        },
+        "feed_posts": posts_result.unwrap()
+    }));
 
-
-     Ok(body)
-
+    Ok(body)
 }
 
 
@@ -715,9 +715,9 @@ pub async fn get_user_subs(
         return Err(Error::MissingParams)
     }
 
-    let sub_mods_rsp = sub_mods::Entity::find_by_user_id(&user_sov_id).all(&state.connection).await;
+    let user_subs = user_joined_subs::Entity::find_by_user_sov_id(&user_sov_id).all(&state.connection).await;
 
-    if sub_mods_rsp.is_err() {
+    if user_subs.is_err() {
         return Err(Error::DBFetchError)
     }
 
@@ -725,7 +725,7 @@ pub async fn get_user_subs(
         "result": {
             "success": true
         },
-        "sub_mods": sub_mods_rsp.unwrap()
+        "user_subs": user_subs.unwrap()
     }));
 
     Ok(body)

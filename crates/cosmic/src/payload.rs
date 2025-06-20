@@ -49,6 +49,7 @@ impl CreateAndSaveModel {
 pub struct JoinOrUnjoinSub {
     pub user_sov_id: String,
     pub sub_sov_id: String,
+    pub sub_name: String,
     pub value: i32
 }
 

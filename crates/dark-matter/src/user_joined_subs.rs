@@ -13,6 +13,7 @@ pub struct Model {
     pub id: Uuid,
     pub user_sov_id: String,
     pub sub_sov_id: String,
+    pub subname: String,
         pub created_at: DateTime,
     pub updated_at: DateTime,
 }
@@ -57,4 +58,10 @@ impl Entity {
         Self::find().filter(Column::SubSovId.eq(sub_sov_id))
             .filter(Column::UserSovId.eq(user_sov_id))
     }
+
+    pub fn find_by_user_sov_id( user_sov_id: &str) -> Select<Entity> {
+        Self::find()
+            .filter(Column::UserSovId.eq(user_sov_id))
+    }
+
 }
